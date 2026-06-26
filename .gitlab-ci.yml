@@ -1,0 +1,69 @@
+stages:
+  - format
+  - lint
+  - type_check
+  - dead_code
+  - security
+  - audit
+  - test
+  - compliance
+
+variables:
+  UV_CACHE_DIR: ".uv-cache"
+
+cache:
+  key:
+    files:
+      - requirements.txt
+      - pyproject.toml
+  paths:
+    - .uv-cache/
+    - .venv/
+
+default:
+  image: ghcr.io/astral-sh/uv:python3.11-bookworm-slim
+  before_script:
+    - uv venv .venv
+    - source .venv/bin/activate
+    - uv pip install -r requirements.txt
+    - uv pip install black ruff mypy vulture bandit pytest
+
+black_format:
+  stage: format
+  script:
+    - black --check app.py tests/ check_compliance.py run_audit.py
+
+ruff_lint:
+  stage: lint
+  script:
+    - ruff check app.py tests/ check_compliance.py run_audit.py
+
+mypy_type_check:
+  stage: type_check
+  script:
+    - mypy app.py tests/ check_compliance.py run_audit.py
+
+vulture_dead_code:
+  stage: dead_code
+  script:
+    - vulture app.py
+
+bandit_security:
+  stage: security
+  script:
+    - bandit -r app.py
+
+uv_audit_audit:
+  stage: audit
+  script:
+    - uv audit
+
+pytest_unit_tests:
+  stage: test
+  script:
+    - python -m pytest
+
+compliance_check:
+  stage: compliance
+  script:
+    - python check_compliance.py
